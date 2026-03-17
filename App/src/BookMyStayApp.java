@@ -1,84 +1,70 @@
 import java.util.*;
 
-class Room {
-    private String type;
-    private String amenities;
-    private double price;
+class Reservation {
+    private String guestName;
+    private String roomType;
 
-    public Room(String type, String amenities, double price) {
-        this.type = type;
-        this.amenities = amenities;
-        this.price = price;
+    public Reservation(String guestName, String roomType) {
+        this.guestName = guestName;
+        this.roomType = roomType;
     }
 
-    public String getType() { return type; }
-    public String getAmenities() { return amenities; }
-    public double getPrice() { return price; }
+    public String getGuestName() { return guestName; }
+    public String getRoomType() { return roomType; }
 
     @Override
     public String toString() {
-        return "Room Type: " + type + ", Amenities: " + amenities + ", Price: $" + price;
+        return "Reservation{" + "guestName='" + guestName + '\'' + ", roomType='" + roomType + '\'' + '}';
     }
 }
 
-class Inventory {
-    private Map<String, Integer> roomAvailability;
-    private Map<String, Room> rooms;
+class BookingRequestQueue {
+    private Queue<Reservation> queue;
 
-    public Inventory() {
-        roomAvailability = new HashMap<>();
-        rooms = new HashMap<>();
+    public BookingRequestQueue() {
+        queue = new LinkedList<>();
     }
 
-    public void addRoom(Room room, int quantity) {
-        rooms.put(room.getType(), room);
-        roomAvailability.put(room.getType(), quantity);
+    public void submitRequest(Reservation reservation) {
+        queue.offer(reservation);
     }
 
-    public int getAvailability(String roomType) {
-        return roomAvailability.getOrDefault(roomType, 0);
+    public Reservation pollRequest() {
+        return queue.poll();
     }
 
-    public Room getRoom(String roomType) {
-        return rooms.get(roomType);
+    public boolean hasPendingRequests() {
+        return !queue.isEmpty();
     }
 
-    public Set<String> getAllRoomTypes() {
-        return rooms.keySet();
-    }
-}
-
-class SearchService {
-    private Inventory inventory;
-
-    public SearchService(Inventory inventory) {
-        this.inventory = inventory;
+    public int pendingRequestsCount() {
+        return queue.size();
     }
 
-    public List<Room> searchAvailableRooms() {
-        List<Room> availableRooms = new ArrayList<>();
-        for (String type : inventory.getAllRoomTypes()) {
-            if (inventory.getAvailability(type) > 0) {
-                availableRooms.add(inventory.getRoom(type));
-            }
+    public void printQueue() {
+        System.out.println("Current Booking Queue:");
+        for (Reservation r : queue) {
+            System.out.println(r);
         }
-        return availableRooms;
     }
 }
 
-public class UseCase4RoomSearch {
+public class UseCase5BookingRequestQueue {
     public static void main(String[] args) {
-        Inventory inventory = new Inventory();
-        inventory.addRoom(new Room("Standard", "WiFi, TV", 100), 5);
-        inventory.addRoom(new Room("Deluxe", "WiFi, TV, Mini Bar", 200), 2);
-        inventory.addRoom(new Room("Suite", "WiFi, TV, Mini Bar, Kitchen", 500), 0);
+        BookingRequestQueue bookingQueue = new BookingRequestQueue();
 
-        SearchService searchService = new SearchService(inventory);
-        List<Room> availableRooms = searchService.searchAvailableRooms();
+        bookingQueue.submitRequest(new Reservation("Alice", "Standard"));
+        bookingQueue.submitRequest(new Reservation("Bob", "Deluxe"));
+        bookingQueue.submitRequest(new Reservation("Charlie", "Suite"));
 
-        System.out.println("Available Rooms:");
-        for (Room room : availableRooms) {
-            System.out.println(room);
+        bookingQueue.printQueue();
+
+        System.out.println("\nProcessing requests in FIFO order:");
+        while (bookingQueue.hasPendingRequests()) {
+            Reservation r = bookingQueue.pollRequest();
+            System.out.println("Processing: " + r);
         }
+
+        System.out.println("\nPending requests after processing: " + bookingQueue.pendingRequestsCount());
     }
 }
