@@ -106,9 +106,7 @@ public class UseCase7AddOnServiceSelection {
         System.out.println("\nSelected Add-On Services:");
         List<AddOnService> services = manager.getServices(reservation.getReservationId());
         for (AddOnService service : services) {
-            System.out.println("- " + service);
-        }
-
+            System.out.println("- " + service);}
         // Calculate and display total cost
         double totalCost = manager.calculateTotalCost(reservation.getReservationId());
         System.out.println("\nTotal Add-On Cost: ₹" + totalCost);
