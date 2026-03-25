@@ -22,7 +22,6 @@ class AddOnService {
     public String toString() {
         return serviceName + " (₹" + cost + ")";
     }
-}
 
 // Reservation class (core booking remains unchanged)
 class Reservation {
@@ -81,7 +80,17 @@ class AddOnServiceManager {
 // Main class
 public class UseCase7AddOnServiceSelection {
 
-    public static void main(String[] args) {
+    public AllocationService(Inventory inventory) {
+        this.inventory = inventory;
+        this.allocatedRooms = new HashMap<>();
+        this.random = new Random();
+    }
+
+    public String allocateRoom(Reservation r) {
+        String type = r.getRoomType();
+        if (!inventory.isAvailable(type)) {
+            return "No available rooms for " + type;
+        }
 
         // Create reservation (core system unchanged)
         Reservation reservation = new Reservation("R101", "John Doe");
