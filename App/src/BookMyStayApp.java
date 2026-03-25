@@ -1,134 +1,146 @@
 import java.util.*;
 
-// Custom Exception for Invalid Booking
-class InvalidBookingException extends Exception {
-    public InvalidBookingException(String message) {
-        super(message);
-    }
-}
-
-// Reservation class
-class Reservation {
-    private String reservationId;
+// Booking Request
+class BookingRequest {
     private String guestName;
     private String roomType;
 
-    public Reservation(String reservationId, String guestName, String roomType) {
-        this.reservationId = reservationId;
+    public BookingRequest(String guestName, String roomType) {
         this.guestName = guestName;
         this.roomType = roomType;
     }
 
-    @Override
-    public String toString() {
-        return "Reservation ID: " + reservationId +
-                ", Guest: " + guestName +
-                ", Room Type: " + roomType;
+    public String getGuestName() {
+        return guestName;
+    }
+
+    public String getRoomType() {
+        return roomType;
     }
 }
 
-// Validator Class
-class InvalidBookingValidator {
-
-    private Set<String> validRoomTypes;
-
-    public InvalidBookingValidator() {
-        validRoomTypes = new HashSet<>(Arrays.asList("Standard", "Deluxe", "Suite"));
-    }
-
-    // Validate booking input
-    public void validate(String guestName, String roomType, Map<String, Integer> inventory)
-            throws InvalidBookingException {
-
-        // Fail-fast checks
-        if (guestName == null || guestName.trim().isEmpty()) {
-            throw new InvalidBookingException("Guest name cannot be empty.");
-        }
-
-        if (!validRoomTypes.contains(roomType)) {
-            throw new InvalidBookingException("Invalid room type: " + roomType);
-        }
-
-        if (!inventory.containsKey(roomType)) {
-            throw new InvalidBookingException("Room type not available in inventory.");
-        }
-
-        if (inventory.get(roomType) <= 0) {
-            throw new InvalidBookingException("No rooms available for type: " + roomType);
-        }
-    }
-}
-
-// Booking Service
-class BookingService {
+// Thread-safe Booking Processor
+class ConcurrentBookingProcessor {
 
     private Map<String, Integer> inventory;
+    private Queue<BookingRequest> bookingQueue;
     private int counter = 100;
 
-    public BookingService() {
+    public ConcurrentBookingProcessor() {
         inventory = new HashMap<>();
+        bookingQueue = new LinkedList<>();
+
+        // Initialize inventory
         inventory.put("Standard", 2);
         inventory.put("Deluxe", 1);
-        inventory.put("Suite", 0); // intentionally zero to test validation
     }
 
-    public Reservation createBooking(String guestName, String roomType,
-                                     InvalidBookingValidator validator)
-            throws InvalidBookingException {
+    // Add booking request to shared queue
+    public synchronized void addRequest(BookingRequest request) {
+        bookingQueue.offer(request);
+        System.out.println(Thread.currentThread().getName() +
+                " added request for " + request.getGuestName());
+    }
 
-        // Validate before processing (fail-fast)
-        validator.validate(guestName, roomType, inventory);
+    // Process booking (critical section)
+    public void processBookings() {
+        while (true) {
+            BookingRequest request;
 
-        // Safe state update
-        inventory.put(roomType, inventory.get(roomType) - 1);
+            // Synchronized block for safe queue access
+            synchronized (this) {
+                if (bookingQueue.isEmpty()) {
+                    break;
+                }
+                request = bookingQueue.poll();
+            }
 
-        // Generate reservation
-        String reservationId = "R" + (++counter);
-        return new Reservation(reservationId, guestName, roomType);
+            // Critical section: inventory update must be synchronized
+            synchronized (this) {
+                String roomType = request.getRoomType();
+
+                if (inventory.containsKey(roomType) && inventory.get(roomType) > 0) {
+                    inventory.put(roomType, inventory.get(roomType) - 1);
+                    String reservationId = "R" + (++counter);
+
+                    System.out.println(Thread.currentThread().getName() +
+                            " SUCCESS -> " + request.getGuestName() +
+                            " booked " + roomType +
+                            " | Reservation ID: " + reservationId);
+                } else {
+                    System.out.println(Thread.currentThread().getName() +
+                            " FAILED -> No rooms available for " +
+                            request.getGuestName());
+                }
+            }
+
+            // Simulate processing delay
+            try {
+                Thread.sleep(100);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            }
+        }
     }
 
     public void displayInventory() {
-        System.out.println("\nCurrent Inventory:");
+        System.out.println("\nFinal Inventory:");
         for (Map.Entry<String, Integer> entry : inventory.entrySet()) {
-            System.out.println(entry.getKey() + " Rooms: " + entry.getValue());
+            System.out.println(entry.getKey() + " Rooms Left: " + entry.getValue());
         }
+    }
+}
+
+// Worker Thread
+class BookingWorker extends Thread {
+
+    private ConcurrentBookingProcessor processor;
+
+    public BookingWorker(ConcurrentBookingProcessor processor, String name) {
+        super(name);
+        this.processor = processor;
+    }
+
+    @Override
+    public void run() {
+        processor.processBookings();
     }
 }
 
 // Main Class
-public class UseCase9ErrorHandlingValidation {
+public class UseCase11ConcurrentBookingSimulation {
 
     public static void main(String[] args) {
 
-        BookingService bookingService = new BookingService();
-        InvalidBookingValidator validator = new InvalidBookingValidator();
+        ConcurrentBookingProcessor processor = new ConcurrentBookingProcessor();
 
-        bookingService.displayInventory();
+        // Simulate multiple guest requests
+        processor.addRequest(new BookingRequest("Alice", "Standard"));
+        processor.addRequest(new BookingRequest("Bob", "Standard"));
+        processor.addRequest(new BookingRequest("Charlie", "Standard"));
+        processor.addRequest(new BookingRequest("David", "Deluxe"));
+        processor.addRequest(new BookingRequest("Eve", "Deluxe"));
 
-        // Test cases (valid + invalid scenarios)
-        String[][] testInputs = {
-                {"Alice", "Deluxe"},     // valid
-                {"", "Standard"},        // invalid name
-                {"Bob", "Luxury"},       // invalid room type
-                {"Charlie", "Suite"}     // no availability
-        };
+        // Create multiple threads (simulating concurrent users)
+        Thread t1 = new BookingWorker(processor, "Thread-1");
+        Thread t2 = new BookingWorker(processor, "Thread-2");
+        Thread t3 = new BookingWorker(processor, "Thread-3");
 
-        for (String[] input : testInputs) {
-            try {
-                System.out.println("\nProcessing booking for: " + input[0] + ", Room: " + input[1]);
+        // Start threads
+        t1.start();
+        t2.start();
+        t3.start();
 
-                Reservation reservation = bookingService.createBooking(
-                        input[0], input[1], validator
-                );
-
-                System.out.println("Booking Successful: " + reservation);
-
-            } catch (InvalidBookingException e) {
-                // Graceful failure handling
-                System.out.println("Booking Failed: " + e.getMessage());
-            }
+        // Wait for all threads to finish
+        try {
+            t1.join();
+            t2.join();
+            t3.join();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
         }
 
-        bookingService.displayInventory();
+        // Final inventory state
+        processor.displayInventory();
     }
 }
