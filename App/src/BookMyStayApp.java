@@ -1,96 +1,119 @@
-/**
- * Book My Stay App
- * Use Case 2: Basic Room Types & Static Availability
- *
- * Demonstrates abstraction, inheritance, and polymorphism
- * using different types of hotel rooms.
- *
- * @author Student
- * @version 2.1
- */
+import java.util.*;
 
-// Abstract Room class
-abstract class Room {
+// Add-On Service class
+class AddOnService {
+    private String serviceName;
+    private double cost;
 
-    protected String roomType;
-    protected int beds;
-    protected double size;
-    protected double price;
-
-    public Room(String roomType, int beds, double size, double price) {
-        this.roomType = roomType;
-        this.beds = beds;
-        this.size = size;
-        this.price = price;
+    public AddOnService(String serviceName, double cost) {
+        this.serviceName = serviceName;
+        this.cost = cost;
     }
 
-    public void displayRoomDetails() {
-        System.out.println("Room Type: " + roomType);
-        System.out.println("Beds: " + beds);
-        System.out.println("Room Size: " + size + " sq.ft");
-        System.out.println("Price per Night: $" + price);
+    public String getServiceName() {
+        return serviceName;
+    }
+
+    public double getCost() {
+        return cost;
+    }
+
+    @Override
+    public String toString() {
+        return serviceName + " (₹" + cost + ")";
     }
 }
 
-// Single Room class
-class SingleRoom extends Room {
+// Reservation class (core booking remains unchanged)
+class Reservation {
+    private String reservationId;
+    private String guestName;
 
-    public SingleRoom() {
-        super("Single Room", 1, 200, 100);
+    public Reservation(String reservationId, String guestName) {
+        this.reservationId = reservationId;
+        this.guestName = guestName;
+    }
+
+    public String getReservationId() {
+        return reservationId;
+    }
+
+    public String getGuestName() {
+        return guestName;
     }
 }
 
-// Double Room class
-class DoubleRoom extends Room {
+// Add-On Service Manager
+class AddOnServiceManager {
 
-    public DoubleRoom() {
-        super("Double Room", 2, 350, 180);
+    // Map: Reservation ID → List of Services
+    private Map<String, List<AddOnService>> reservationServicesMap;
+
+    public AddOnServiceManager() {
+        reservationServicesMap = new HashMap<>();
+    }
+
+    // Add services to a reservation
+    public void addService(String reservationId, AddOnService service) {
+        reservationServicesMap
+                .computeIfAbsent(reservationId, k -> new ArrayList<>())
+                .add(service);
+    }
+
+    // Get services for a reservation
+    public List<AddOnService> getServices(String reservationId) {
+        return reservationServicesMap.getOrDefault(reservationId, new ArrayList<>());
+    }
+
+    // Calculate total additional cost
+    public double calculateTotalCost(String reservationId) {
+        List<AddOnService> services = reservationServicesMap.get(reservationId);
+        if (services == null) return 0.0;
+
+        double total = 0.0;
+        for (AddOnService service : services) {
+            total += service.getCost();
+        }
+        return total;
     }
 }
 
-// Suite Room class
-class SuiteRoom extends Room {
-
-    public SuiteRoom() {
-        super("Suite Room", 3, 600, 350);
-    }
-}
-
-// Main Application Class
-public class UseCase2RoomInitialization {
+// Main class
+public class UseCase7AddOnServiceSelection {
 
     public static void main(String[] args) {
 
-        System.out.println("=================================");
-        System.out.println("      Book My Stay App v2.1      ");
-        System.out.println(" Room Types & Static Availability");
-        System.out.println("=================================\n");
+        // Create reservation (core system unchanged)
+        Reservation reservation = new Reservation("R101", "John Doe");
 
-        // Creating room objects
-        Room single = new SingleRoom();
-        Room doubleRoom = new DoubleRoom();
-        Room suite = new SuiteRoom();
+        // Create Add-On Service Manager
+        AddOnServiceManager manager = new AddOnServiceManager();
 
-        // Static availability variables
-        int singleAvailable = 5;
-        int doubleAvailable = 3;
-        int suiteAvailable = 2;
+        // Available services
+        AddOnService breakfast = new AddOnService("Breakfast", 500);
+        AddOnService airportPickup = new AddOnService("Airport Pickup", 1200);
+        AddOnService spa = new AddOnService("Spa Service", 2000);
 
-        // Display Single Room
-        single.displayRoomDetails();
-        System.out.println("Available Rooms: " + singleAvailable);
-        System.out.println("---------------------------------\n");
+        // Guest selects services
+        manager.addService(reservation.getReservationId(), breakfast);
+        manager.addService(reservation.getReservationId(), airportPickup);
+        manager.addService(reservation.getReservationId(), spa);
 
-        // Display Double Room
-        doubleRoom.displayRoomDetails();
-        System.out.println("Available Rooms: " + doubleAvailable);
-        System.out.println("---------------------------------\n");
+        // Display selected services
+        System.out.println("Reservation ID: " + reservation.getReservationId());
+        System.out.println("Guest Name: " + reservation.getGuestName());
 
-        // Display Suite Room
-        suite.displayRoomDetails();
-        System.out.println("Available Rooms: " + suiteAvailable);
-        System.out.println("---------------------------------\n");
+        System.out.println("\nSelected Add-On Services:");
+        List<AddOnService> services = manager.getServices(reservation.getReservationId());
+        for (AddOnService service : services) {
+            System.out.println("- " + service);
+        }
 
-        System.out.println("Thank you for exploring Book My Stay!");
+        // Calculate and display total cost
+        double totalCost = manager.calculateTotalCost(reservation.getReservationId());
+        System.out.println("\nTotal Add-On Cost: ₹" + totalCost);
+
+        // Core booking remains unaffected
+        System.out.println("\nNote: Room booking and inventory remain unchanged.");
     }
 }
