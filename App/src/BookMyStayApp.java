@@ -1,96 +1,175 @@
-/**
- * Book My Stay App
- * Use Case 2: Basic Room Types & Static Availability
- *
- * Demonstrates abstraction, inheritance, and polymorphism
- * using different types of hotel rooms.
- *
- * @author Student
- * @version 2.1
- */
+import java.util.*;
 
-// Abstract Room class
-abstract class Room {
+// Reservation class
+class Reservation {
+    private String reservationId;
+    private String guestName;
+    private String roomType;
+    private String roomId;
+    private boolean isCancelled;
 
-    protected String roomType;
-    protected int beds;
-    protected double size;
-    protected double price;
-
-    public Room(String roomType, int beds, double size, double price) {
+    public Reservation(String reservationId, String guestName, String roomType, String roomId) {
+        this.reservationId = reservationId;
+        this.guestName = guestName;
         this.roomType = roomType;
-        this.beds = beds;
-        this.size = size;
-        this.price = price;
+        this.roomId = roomId;
+        this.isCancelled = false;
     }
 
-    public void displayRoomDetails() {
-        System.out.println("Room Type: " + roomType);
-        System.out.println("Beds: " + beds);
-        System.out.println("Room Size: " + size + " sq.ft");
-        System.out.println("Price per Night: $" + price);
+    public String getReservationId() {
+        return reservationId;
     }
-}
 
-// Single Room class
-class SingleRoom extends Room {
-
-    public SingleRoom() {
-        super("Single Room", 1, 200, 100);
+    public String getRoomType() {
+        return roomType;
     }
-}
 
-// Double Room class
-class DoubleRoom extends Room {
-
-    public DoubleRoom() {
-        super("Double Room", 2, 350, 180);
+    public String getRoomId() {
+        return roomId;
     }
-}
 
-// Suite Room class
-class SuiteRoom extends Room {
+    public boolean isCancelled() {
+        return isCancelled;
+    }
 
-    public SuiteRoom() {
-        super("Suite Room", 3, 600, 350);
+    public void cancel() {
+        this.isCancelled = true;
+    }
+
+    @Override
+    public String toString() {
+        return "Reservation ID: " + reservationId +
+                ", Guest: " + guestName +
+                ", Room Type: " + roomType +
+                ", Room ID: " + roomId +
+                ", Status: " + (isCancelled ? "Cancelled" : "Confirmed");
     }
 }
 
-// Main Application Class
-public class UseCase2RoomInitialization {
+// Booking Service (handles booking + inventory)
+class BookingService {
+
+    private Map<String, Integer> inventory;
+    private Map<String, Stack<String>> availableRooms;
+    private Map<String, Reservation> reservations;
+    private int counter = 100;
+
+    public BookingService() {
+        inventory = new HashMap<>();
+        availableRooms = new HashMap<>();
+        reservations = new HashMap<>();
+
+        // Initialize inventory and room IDs
+        initializeRooms("Standard", 2);
+        initializeRooms("Deluxe", 2);
+    }
+
+    private void initializeRooms(String type, int count) {
+        inventory.put(type, count);
+        Stack<String> rooms = new Stack<>();
+
+        for (int i = 1; i <= count; i++) {
+            rooms.push(type.charAt(0) + String.valueOf(i)); // e.g., S1, S2
+        }
+
+        availableRooms.put(type, rooms);
+    }
+
+    // Create booking
+    public Reservation bookRoom(String guestName, String roomType) {
+        if (!inventory.containsKey(roomType) || inventory.get(roomType) <= 0) {
+            System.out.println("Booking failed: No rooms available for " + roomType);
+            return null;
+        }
+
+        // Allocate room (LIFO)
+        String roomId = availableRooms.get(roomType).pop();
+        inventory.put(roomType, inventory.get(roomType) - 1);
+
+        String reservationId = "R" + (++counter);
+        Reservation reservation = new Reservation(reservationId, guestName, roomType, roomId);
+
+        reservations.put(reservationId, reservation);
+
+        System.out.println("Booking Successful: " + reservation);
+        return reservation;
+    }
+
+    // Cancel booking (rollback logic)
+    public void cancelBooking(String reservationId) {
+
+        System.out.println("\nAttempting cancellation for: " + reservationId);
+
+        // Validate existence
+        if (!reservations.containsKey(reservationId)) {
+            System.out.println("Cancellation Failed: Reservation does not exist.");
+            return;
+        }
+
+        Reservation reservation = reservations.get(reservationId);
+
+        // Prevent duplicate cancellation
+        if (reservation.isCancelled()) {
+            System.out.println("Cancellation Failed: Already cancelled.");
+            return;
+        }
+
+        String roomType = reservation.getRoomType();
+        String roomId = reservation.getRoomId();
+
+        // Rollback using stack (LIFO)
+        availableRooms.get(roomType).push(roomId);
+
+        // Restore inventory
+        inventory.put(roomType, inventory.get(roomType) + 1);
+
+        // Mark as cancelled
+        reservation.cancel();
+
+        System.out.println("Cancellation Successful: " + reservationId);
+    }
+
+    public void displayInventory() {
+        System.out.println("\nCurrent Inventory:");
+        for (String type : inventory.keySet()) {
+            System.out.println(type + " Rooms Available: " + inventory.get(type));
+        }
+    }
+
+    public void displayReservations() {
+        System.out.println("\nAll Reservations:");
+        for (Reservation r : reservations.values()) {
+            System.out.println(r);
+        }
+    }
+}
+
+// Main class
+public class UseCase10BookingCancellation {
 
     public static void main(String[] args) {
 
-        System.out.println("=================================");
-        System.out.println("      Book My Stay App v2.1      ");
-        System.out.println(" Room Types & Static Availability");
-        System.out.println("=================================\n");
+        BookingService service = new BookingService();
 
-        // Creating room objects
-        Room single = new SingleRoom();
-        Room doubleRoom = new DoubleRoom();
-        Room suite = new SuiteRoom();
+        service.displayInventory();
 
-        // Static availability variables
-        int singleAvailable = 5;
-        int doubleAvailable = 3;
-        int suiteAvailable = 2;
+        // Create bookings
+        Reservation r1 = service.bookRoom("Alice", "Standard");
+        Reservation r2 = service.bookRoom("Bob", "Standard");
 
-        // Display Single Room
-        single.displayRoomDetails();
-        System.out.println("Available Rooms: " + singleAvailable);
-        System.out.println("---------------------------------\n");
+        service.displayInventory();
 
-        // Display Double Room
-        doubleRoom.displayRoomDetails();
-        System.out.println("Available Rooms: " + doubleAvailable);
-        System.out.println("---------------------------------\n");
+        // Cancel a booking
+        if (r1 != null) {
+            service.cancelBooking(r1.getReservationId());
+        }
 
-        // Display Suite Room
-        suite.displayRoomDetails();
-        System.out.println("Available Rooms: " + suiteAvailable);
-        System.out.println("---------------------------------\n");
+        service.displayInventory();
 
-        System.out.println("Thank you for exploring Book My Stay!");
+        // Try invalid cancellation
+        service.cancelBooking("R999"); // non-existent
+        service.cancelBooking(r1.getReservationId()); // duplicate cancellation
+
+        service.displayReservations();
     }
 }
